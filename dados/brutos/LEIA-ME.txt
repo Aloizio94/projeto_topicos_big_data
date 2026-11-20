@@ -1,0 +1,4 @@
+Camada BRUTA do data lake.
+
+Copie para esta pasta os CSVs de OTIF exatamente como vieram (padrão mês e ano da base de exemplo)
+Não edite os arquivos: o pipeline lê daqui e grava o resultado nas pastas "tratados" e "analiticos".

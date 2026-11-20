@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+# Os CSVs brutos não vão para o repositório; as camadas processadas vão, para o painel rodar sem Java.
+dados/brutos/*.CSV
+dados/brutos/*.csv
+dados/tratados/visitas_tratadas.parquet
