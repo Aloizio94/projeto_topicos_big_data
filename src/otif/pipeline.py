@@ -5,7 +5,7 @@ import logging
 import time
 from pathlib import Path
 
-from .config import Configuracao, mes_do_arquivo
+from .config import Configuracao, assinatura_dos_csvs, mes_do_arquivo
 from .modelo_dados import ConstrutorModeloEstrela
 from .processamento import ProcessadorSpark
 from .repositorio import RepositorioParquet
@@ -35,6 +35,7 @@ class PipelineOTIF:
     def executar(self) -> RelatorioQualidade:
         inicio = time.perf_counter()
         arquivos, descartados = self.listar_arquivos()
+        assinatura = assinatura_dos_csvs(self.config.pasta_brutos)  # tirada antes de ler os arquivos
         log.info("1/4 Ingestão: %d arquivos mensais em %s", len(arquivos), self.config.pasta_brutos)
         for nome in descartados:
             log.info("    Descartado (nome sem o mês de referência): %s", nome)
@@ -58,6 +59,8 @@ class PipelineOTIF:
         for nome, tabela in tabelas.items():
             self.analiticos.salvar(nome, tabela)
         self.analiticos.salvar_json("relatorio_qualidade", relatorio.para_dicionario())
+        # Controle usado pelo iniciar.py para saber se há CSV novo, alterado ou removido.
+        self.tratados.salvar_json("controle_arquivos", assinatura)
         log.info("4/4 Camada analítica gravada: %s", ", ".join(tabelas))
         log.info("Concluído em %.1f s.", time.perf_counter() - inicio)
         return relatorio

@@ -25,13 +25,15 @@ quando o Python está em uma pasta com espaços.
 O projeto tem duas partes. O **pipeline** (Spark) roda uma vez e grava os dados processados em Parquet.
 O **painel** só lê esses arquivos, por isso funciona em qualquer máquina com Python, sem Java.
 
-1. Instale o **Python 3.11 ou 3.12**. Abra o terminal nesta pasta e crie o ambiente virtual:
+1. Instale o **Python 3.11 ou 3.12**. Abra o terminal nesta pasta e crie o ambiente virtual **fora** da pasta
+   do projeto, em um caminho sem espaços (o mesmo que o `.bat` usa):
    ```
-   python -m venv .venv
-   .venv\Scripts\activate
+   python -m venv "%LOCALAPPDATA%\RadarDeEntregas\venv"
+   "%LOCALAPPDATA%\RadarDeEntregas\venv\Scripts\activate"
    pip install -r requirements.txt
    ```
-2. Abra o painel (os dados processados já estão em `dados\analiticos\`):
+   Não crie o ambiente dentro desta pasta: se o caminho tiver espaços, o Spark não funciona no Windows.
+2. Abra o painel (se a pasta `dados\analiticos\` estiver vazia, faça antes o passo 3):
    ```
    streamlit run app.py
    ```
@@ -41,7 +43,7 @@ O **painel** só lê esses arquivos, por isso funciona em qualquer máquina com 
    - copie os CSVs de OTIF (os arquivos de dentro do `otif.7z`) para `dados\brutos\`;
    - rode `python executar_pipeline.py` (leva menos de 1 minuto com os arquivos de exemplo).
    Só entram os arquivos com o mês no nome (`OTIF_JAN22.CSV`, `OTIF_FEV22.CSV`...); os outros são descartados.
-4. Testes: `python -m pytest` (o teste do Spark é pulado se o Java não estiver instalado).
+4. Testes: `python -m pytest` (o teste do Spark é pulado, com o motivo, se não houver um Java compatível).
 
 ## Como o sistema está organizado
 
@@ -78,5 +80,6 @@ docs/diagramas.md     modelo de dados e diagrama de classes em Mermaid
 
 - Cada arquivo traz um mês, identificado pelo nome (`OTIF_MMMAA.CSV`).
 - Da chave "Visita OTIF" o sistema usa só o código do cliente (2º trecho). Visitas com mapa `000000` no fim
-  da chave são tratadas como **entrega não realizada** e contam como falha de OT, IF e OTIF.
+  da chave são tratadas como **entrega não realizada**: contam como falha no OTIF e têm causa própria.
+  Os valores de OT e IF são usados como vêm no arquivo.
 - Os índices: OT = % de visitas no prazo, IF = % de visitas completas, OTIF = % de visitas no prazo e completas.

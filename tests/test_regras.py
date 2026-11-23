@@ -3,7 +3,6 @@
 Os testes de regras usam uma camada tratada montada à mão e rodam em qualquer máquina.
 O teste de transformação usa o Spark e é pulado automaticamente se o Java não estiver instalado.
 """
-import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -13,14 +12,27 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from otif.config import Configuracao, mes_do_arquivo  # noqa: E402
-from otif.indicadores import CalculadoraOTIF  # noqa: E402
-from otif.modelo_dados import ConstrutorModeloEstrela  # noqa: E402
-from otif.processamento import COLUNAS_TRATADAS, padronizar_tipos  # noqa: E402
-from otif.validacao import ValidadorQualidade  # noqa: E402
+from otif.config import Configuracao, assinatura_dos_csvs, mes_do_arquivo
+from otif.indicadores import CalculadoraOTIF
+from otif.modelo_dados import ConstrutorModeloEstrela
+from otif.processamento import COLUNAS_TRATADAS, padronizar_tipos
+from otif.validacao import ValidadorQualidade
+
+
+def motivo_sem_spark() -> str | None:
+    """Por que o Spark não pode rodar aqui (Java ausente ou incompatível, pasta com espaços), ou None."""
+    try:
+        from otif.ambiente import preparar_spark
+
+        preparar_spark()
+    except Exception as erro:  # qualquer falha de ambiente pula o teste, sem quebrar os demais
+        return str(erro)
+    return None
+
+
+SEM_SPARK = motivo_sem_spark()
 
 UNIDADE = "DISTRIBUIDORA TESTE    "
-# (arquivo, data de entrega, Visita OTIF, OT, IF, OTIF)
 LINHAS = [
     ("OTIF_JAN22.CSV", "03/01/2022", "0001-0000001-03/01/2022-100001", "Sim", "Sim", "Sim"),
     ("OTIF_JAN22.CSV", "03/01/2022", "0001-0000002-03/01/2022-100001", "Não", "Sim", "Não"),
@@ -60,7 +72,7 @@ def calc(validado):
 
 
 # ------------------------------------------------------------------ Spark
-@pytest.mark.skipif(shutil.which("java") is None, reason="Java não instalado: teste do Spark pulado")
+@pytest.mark.skipif(SEM_SPARK is not None, reason=f"Spark indisponível: {SEM_SPARK}")
 def test_spark_gera_a_mesma_camada_tratada(tmp_path):
     from otif.processamento import ProcessadorSpark
 
@@ -119,16 +131,17 @@ def test_indicadores(calc):
     assert r["pct_otif"] == pytest.approx(33.33, abs=0.01)
     assert calc.filtrar("2022-02", "2022-02").resumo()["visitas"] == 2
     assert calc.filtrar(cliente="0000002").resumo()["falhas"] == 2
+    assert calc.filtrar(cliente="2").resumo()["falhas"] == 2       # sem os zeros à esquerda
     causas = calc.por_causa().set_index("causa")["falhas"].to_dict()
     assert causas == {"Prazo (OT)": 1, "Completude (IF)": 1, "Prazo e completude": 1, "Entrega não realizada": 1}
 
 
 def test_ranking_por_volume_e_por_taxa(calc):
     volume = calc.ranking_clientes(minimo_visitas=1)
-    assert volume.iloc[0]["cliente"] == "0000002"            # 2 falhas
+    assert volume.iloc[0]["cliente"] == "0000002"
     assert volume["participacao_falhas"].sum() == pytest.approx(100.0)
     taxa = calc.ranking_clientes(minimo_visitas=1, ordenar_por="pct_falha").set_index("cliente")
-    assert taxa.index[-1] == "0000001"                       # 1 falha em 3 visitas
+    assert taxa.index[-1] == "0000001"
     assert taxa.loc["0000001", "pct_falha"] == pytest.approx(33.33, abs=0.01)
     assert taxa.loc["0000003", "causa_principal"] == "Entrega não realizada"
     assert len(calc.ranking_clientes(minimo_visitas=3)) == 1
@@ -138,3 +151,15 @@ def test_pareto(calc):
     pareto = calc.curva_pareto_clientes()
     assert pareto["pct_falhas_acumuladas"].iloc[-1] == pytest.approx(100.0)
     assert calc.concentracao_falhas(0.34) == pytest.approx(50.0)
+
+
+def test_assinatura_detecta_csv_novo_alterado_ou_removido(tmp_path):
+    (tmp_path / "OTIF_JAN22.CSV").write_text("a")
+    antes = assinatura_dos_csvs(tmp_path)
+    assert antes == assinatura_dos_csvs(tmp_path)                    # nada mudou
+    (tmp_path / "OTIF_JAN22.CSV").write_text("ab")                   # conteúdo trocado, mesmo nome
+    assert assinatura_dos_csvs(tmp_path) != antes
+    (tmp_path / "OTIF_FEV22.CSV").write_text("a")                    # arquivo novo
+    assert "OTIF_FEV22.CSV" in assinatura_dos_csvs(tmp_path)
+    (tmp_path / "LEIA-ME.txt").write_text("x")                       # só CSVs contam
+    assert "LEIA-ME.txt" not in assinatura_dos_csvs(tmp_path)

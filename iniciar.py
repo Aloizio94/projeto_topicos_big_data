@@ -1,14 +1,12 @@
 """Inicia o Radar de Entregas com um único comando (ou com dois cliques no arquivo .bat).
 
 O que ele faz, na ordem:
-1. instala as bibliotecas que faltarem (só na primeira vez);
+1. instala as bibliotecas que faltarem na primeira execução (e quando o requirements.txt mudar);
 2. processa os CSVs com o Spark se houver arquivo novo ou alterado em dados/brutos;
 3. abre o painel no navegador.
 
-Uso:  python iniciar.py              (processa só se houver CSV novo)
-      python iniciar.py --processar  (força o processamento)
 """
-import importlib.util
+import json
 import subprocess
 import sys
 import time
@@ -18,31 +16,35 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent
 BRUTOS = RAIZ / "dados" / "brutos"
 ANALITICOS = RAIZ / "dados" / "analiticos"
+CONTROLE = RAIZ / "dados" / "tratados" / "controle_arquivos.json"
 ENDERECO = "http://localhost:8501"
 
 
 def instalar_bibliotecas() -> None:
-    faltando = [m for m in ("pandas", "pyarrow", "pyspark", "streamlit", "plotly")
-                if importlib.util.find_spec(m) is None]
-    if faltando:
-        print("Instalando as bibliotecas (só na primeira vez, pode levar alguns minutos)...")
-        subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(RAIZ / "requirements.txt")], check=True)
+    """Instala as bibliotecas na primeira execução e sempre que o requirements.txt mudar."""
+    requisitos = (RAIZ / "requirements.txt").read_text(encoding="utf-8")
+    marcador = Path(sys.prefix) / "radar_requirements.txt"  # cópia do que já foi instalado neste ambiente
+    if marcador.exists() and marcador.read_text(encoding="utf-8") == requisitos:
+        return
+    print("Instalando as bibliotecas (pode levar alguns minutos)...")
+    subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(RAIZ / "requirements.txt")], check=True)
+    try:
+        marcador.write_text(requisitos, encoding="utf-8")
+    except OSError:
+        pass  # sem permissão (Python fora de um ambiente virtual): só reinstala na próxima vez
 
 
 def precisa_processar() -> bool:
-    """True se houver CSV que ainda não foi processado ou que mudou depois do último processamento."""
-    csvs = [p for p in BRUTOS.iterdir() if p.is_file() and p.suffix.lower() == ".csv"] if BRUTOS.exists() else []
-    if not csvs:
-        return False
-    fato, resumo = ANALITICOS / "fato_visita.parquet", ANALITICOS / "resumo_arquivos.parquet"
-    if not fato.exists() or not resumo.exists():
-        return True
-    import pandas as pd
+    """True se houver CSV novo, alterado ou removido desde o último processamento."""
+    sys.path.insert(0, str(RAIZ / "src"))  # importado aqui: as bibliotecas já estão instaladas
+    from otif.config import assinatura_dos_csvs
 
-    processados = set(pd.read_parquet(resumo)["arquivo"])
-    if {p.name for p in csvs} != processados:
+    atual = assinatura_dos_csvs(BRUTOS)
+    if not atual:
+        return False
+    if not (ANALITICOS / "fato_visita.parquet").exists() or not CONTROLE.exists():
         return True
-    return max(p.stat().st_mtime for p in csvs) > fato.stat().st_mtime
+    return json.loads(CONTROLE.read_text(encoding="utf-8")) != atual
 
 
 def processar() -> bool:

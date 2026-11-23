@@ -1,8 +1,4 @@
-"""Processamento com PySpark: lê os CSVs mensais e gera a camada tratada.
-
-O Spark faz o trabalho pesado (leitura paralela dos arquivos, transformações e agregação mensal) e
-devolve o resultado como DataFrame do Pandas, que o resto do sistema usa.
-"""
+# Processamento com PySpark: lê os CSVs mensais e gera a camada tratada.
 from __future__ import annotations
 
 from pathlib import Path
@@ -23,7 +19,7 @@ class ProcessadorSpark:
 
     def __init__(self, config: Configuracao):
         self.config = config
-        self.java = preparar_spark()  # escolhe o Java e ajusta as variáveis de ambiente
+        self.java = preparar_spark()
         from pyspark.sql import SparkSession
 
         self.spark = (
@@ -56,7 +52,7 @@ class ProcessadorSpark:
             *[F.col(f"`{cols[i]}`").alias(COLUNAS_PADRAO[i]) for i in range(7)],
             F.element_at(F.split(F.input_file_name(), "/"), -1).alias("arquivo_origem"),
         )
-        sim = lambda c: F.col(c) == F.lit("Sim")  # noqa: E731
+        sim = lambda c: F.col(c) == F.lit("Sim")
         df = (
             df.withColumn("arquivo_origem", F.expr("url_decode(arquivo_origem)"))
             .withColumn("nome_unidade", F.trim("nome_unidade"))

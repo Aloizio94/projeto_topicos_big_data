@@ -8,14 +8,13 @@ import pandas as pd
 
 
 class RepositorioParquet:
-    """Guarda cada tabela como um arquivo Parquet dentro de uma pasta (uma camada)."""
+    """Guarda cada tabela como um arquivo Parquet dentro da pasta de dados"""
 
     def __init__(self, pasta: Path):
         self.pasta = Path(pasta)
         self.pasta.mkdir(parents=True, exist_ok=True)
 
     def salvar(self, nome: str, df: pd.DataFrame) -> None:
-        # Gravação via PyArrow: evita depender do winutils do Hadoop no Windows.
         df.to_parquet(self.pasta / f"{nome}.parquet", index=False)
 
     def ler(self, nome: str) -> pd.DataFrame:

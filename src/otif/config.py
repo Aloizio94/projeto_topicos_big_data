@@ -1,4 +1,4 @@
-"""Configurações gerais do Radar de Entregas: caminhos das camadas e constantes do layout."""
+# Responsável pela organização de pastas, identificação dos nomes das colunas e possíveis causas de falha na leitura
 from __future__ import annotations
 
 import re
@@ -32,14 +32,21 @@ DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Dom
 # Causas das falhas, na ordem em que aparecem nos gráficos.
 CAUSAS_FALHA = ["Prazo (OT)", "Completude (IF)", "Prazo e completude", "Entrega não realizada"]
 
-# Cada arquivo traz um mês: OTIF_JAN22.CSV, OTIF_FEV22.CSV, ...
 _NOME_ARQUIVO = re.compile(r"^OTIF_([A-Z]{3})(\d{2})\.CSV$", re.IGNORECASE)
 
 
+def assinatura_dos_csvs(pasta: Path) -> dict[str, list[int]]:
+    """Nome, tamanho e data de modificação de cada CSV da pasta. Qualquer diferença indica que algo mudou."""
+    if not pasta.exists():
+        return {}
+    return {p.name: [p.stat().st_size, p.stat().st_mtime_ns]
+            for p in sorted(pasta.iterdir()) if p.is_file() and p.suffix.lower() == ".csv"}
+
+
 def mes_do_arquivo(nome: str) -> str | None:
-    """Devolve o mês do arquivo no formato AAAA-MM, ou None se o nome não seguir o padrão."""
-    achou = _NOME_ARQUIVO.match(nome)
-    if not achou or achou.group(1).capitalize() not in MESES:
+    """Devolve o mês do arquivo no formato AAAA-MM, que será usado nos relatórios"""
+    aux = _NOME_ARQUIVO.match(nome)
+    if not aux or aux.group(1).capitalize() not in MESES:
         return None
-    mes = MESES.index(achou.group(1).capitalize()) + 1
-    return f"20{achou.group(2)}-{mes:02d}"
+    mes = MESES.index(aux.group(1).capitalize()) + 1
+    return f"20{aux.group(2)}-{mes:02d}"

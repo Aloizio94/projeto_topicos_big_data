@@ -1,4 +1,4 @@
-"""Verificações de qualidade dos dados e relatório de qualidade."""
+"""Verificações de qualidade dos dados (CSVs usados para gerar os relatórios) e relatório de qualidade (registra informações relevantes a partir dos dados)."""
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -30,7 +30,7 @@ class RelatorioQualidade:
 
 
 class ValidadorQualidade:
-    """Aplica as regras de qualidade definidas no documento de metadata."""
+    """Aplica as regras de qualidade definidas a partir da análise do metadata."""
 
     def validar(self, df: pd.DataFrame, descartados: list[str]) -> tuple[pd.DataFrame, RelatorioQualidade]:
         """Remove as linhas com data inválida e conta os problemas encontrados."""

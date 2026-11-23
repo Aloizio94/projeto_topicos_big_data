@@ -23,6 +23,10 @@ class CalculadoraOTIF:
         if mes_fim:
             b = b[b["ano_mes"] <= mes_fim]
         if cliente:
+            cliente = cliente.strip()
+            tamanho = self.base["cliente_key"].str.len().max()
+            if cliente.isdigit() and pd.notna(tamanho):  # "15111" -> "0015111", no tamanho dos códigos
+                cliente = cliente.zfill(int(tamanho))
             b = b[b["cliente_key"] == cliente]
         nova = CalculadoraOTIF.__new__(CalculadoraOTIF)
         nova.base = b

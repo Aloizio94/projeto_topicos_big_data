@@ -13,11 +13,9 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
-from otif import CalculadoraOTIF, Configuracao, RepositorioParquet  # noqa: E402
-from otif.config import CAUSAS_FALHA, MESES  # noqa: E402
+from otif import CalculadoraOTIF, Configuracao, RepositorioParquet
+from otif.config import CAUSAS_FALHA, MESES
 
-# Cores fixas por significado (paleta validada para daltonismo).
-# OT = azul, IF = laranja, OTIF (indicador-síntese) = tinta neutra.
 COR = {"OT": "#2a78d6", "IF": "#eb6834", "OTIF": "#3d3c38"}
 COR_CAUSA = dict(zip(CAUSAS_FALHA, ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]))
 
@@ -77,7 +75,7 @@ with st.sidebar:
     st.header("Filtros")
     inicio, fim = st.select_slider("Período (mês da entrega)", options=meses, value=(meses[0], meses[-1]),
                                    format_func=lambda m: rotulo_mes(pd.Series([m]))[0])
-    cliente = st.text_input("Código do cliente (opcional)", placeholder="ex.: 0015111").strip()
+    cliente = st.text_input("Código do cliente (opcional)", placeholder="ex.: 15111 ou 0015111").strip()
     st.caption("Os arquivos de exemplo não têm dados de ago a dez/2023.")
 
 calc = calc_total.filtrar(inicio, fim, cliente or None)
@@ -108,7 +106,7 @@ with aba_geral:
                         marker=dict(size=8), hovertemplate="%{y:.1f}%")
     fig.update_xaxes(type="category")
     fig.update_yaxes(ticksuffix="%")
-    st.plotly_chart(estilo(fig), use_container_width=True)
+    st.plotly_chart(estilo(fig), width="stretch")
 
     dias = calc.por_dia_semana()
     pior = dias.loc[dias["pct_falha"].idxmax()]
@@ -120,13 +118,13 @@ with aba_geral:
     fig.update_yaxes(ticksuffix="%", range=[0, dias["pct_falha"].max() * 1.25])
     fig = estilo(fig, 280)
     fig.update_layout(hovermode="closest")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     st.subheader("Relatório mensal de OT, IF e OTIF (todos os clientes)")
     st.caption("Tabela agregada pelo Spark durante o processamento.")
     relatorio = dados["agg_otif_mensal"]
     relatorio = relatorio[relatorio["ano_mes"].between(inicio, fim)]
-    st.dataframe(relatorio, use_container_width=True, hide_index=True, column_config={
+    st.dataframe(relatorio, width="stretch", hide_index=True, column_config={
         "ano_mes": "Mês", "visitas": "Visitas",
         "pct_ot": st.column_config.NumberColumn("OT %", format="%.2f"),
         "pct_if": st.column_config.NumberColumn("IF %", format="%.2f"),
@@ -152,14 +150,14 @@ with aba_clientes:
         fig.update_yaxes(ticksuffix="%", range=[0, 101])
         fig = estilo(fig, 340)
         fig.update_layout(hovermode="closest")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
         esq, dir_ = st.columns([1, 2])
         minimo = esq.slider("Mínimo de visitas do cliente", 1, 200, 20)
         ordem = dir_.radio("Ordenar por", ["Mais falhas (volume)", "Maior taxa de falha (clientes críticos)"],
                            horizontal=True)
         ranking = calc.ranking_clientes(minimo, "falhas" if ordem.startswith("Mais") else "pct_falha")
-        st.dataframe(ranking.head(200), use_container_width=True, hide_index=True, column_config={
+        st.dataframe(ranking.head(200), width="stretch", hide_index=True, column_config={
             "cliente": "Cliente", "visitas": "Visitas", "falhas": "Falhas", "causa_principal": "Causa principal",
             "pct_falha": st.column_config.ProgressColumn("% de falha", format="%.1f", min_value=0, max_value=100),
             "participacao_falhas": st.column_config.NumberColumn("% do total de falhas", format="%.2f"),
@@ -178,7 +176,7 @@ with aba_causas:
         fig.update_layout(showlegend=False, hovermode="closest")
         fig.update_yaxes(categoryorder="array", categoryarray=CAUSAS_FALHA[::-1])
         fig.update_xaxes(range=[0, causas["falhas"].max() * 1.35], showticklabels=False)
-        st.plotly_chart(estilo(fig, 320), use_container_width=True)
+        st.plotly_chart(estilo(fig, 320), width="stretch")
         st.caption("Entrega não realizada: visita com mapa 000000, contada como falha de OT, IF e OTIF.")
     with dir_:
         st.subheader("Falhas por mês e por causa")
@@ -188,7 +186,7 @@ with aba_causas:
                      category_orders={"causa": CAUSAS_FALHA})
         fig.update_xaxes(type="category")
         fig.update_traces(marker_line_color="white", marker_line_width=1)
-        st.plotly_chart(estilo(fig, 320), use_container_width=True)
+        st.plotly_chart(estilo(fig, 320), width="stretch")
 
 # ------------------------------------------------------------------ qualidade
 with aba_qualidade:
@@ -209,5 +207,5 @@ with aba_qualidade:
     ]
     st.table(pd.DataFrame(itens, columns=["Verificação", "Resultado"]).astype(str))
     st.subheader("Arquivos")
-    st.dataframe(dados["resumo_arquivos"], use_container_width=True, hide_index=True, column_config={
+    st.dataframe(dados["resumo_arquivos"], width="stretch", hide_index=True, column_config={
         "arquivo": "Arquivo", "mes": "Mês", "linhas": "Linhas", "situacao": "Situação"})

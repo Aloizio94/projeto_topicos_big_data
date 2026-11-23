@@ -1,11 +1,4 @@
-"""Processa os CSVs de dados/brutos com PySpark e gera as camadas tratada e analítica.
-
-Uso:
-    python executar_pipeline.py
-
-Precisa de Java 17 instalado (exigência do Spark). Basta rodar uma vez, sempre que entrarem
-arquivos novos: o painel só lê o resultado e funciona em qualquer computador, mesmo sem Java.
-"""
+"""Processa os CSVs de dados/brutos com PySpark e gera as camadas tratada e analítica."""
 import logging
 import sys
 from pathlib import Path

@@ -1,7 +1,6 @@
-"""Prepara o ambiente do Spark: encontra um Java compatível e evita os problemas do Windows.
-
-O Spark 3.5 funciona com Java 11, 17 ou 21. Versões mais novas (23 em diante) removeram recursos
-que ele usa, e os scripts do Spark no Windows não aceitam espaços no caminho da instalação.
+"""
+    Prepara o ambiente do Spark: encontra uma versão do Java compatível e evita os problemas do Windows.
+    O Spark 3.5 funciona com Java 11, 17 ou 21.
 """
 from __future__ import annotations
 
@@ -19,7 +18,7 @@ EXECUTAVEL = "java.exe" if NO_WINDOWS else "java"
 
 
 def versao_java(home: Path) -> int | None:
-    """Versão principal do Java instalado em `home` (17, 21...), ou None se não houver Java ali."""
+    """Versão principal do Java instalado em `home` (17, 21...), ou None se não houver Java."""
     java = home / "bin" / EXECUTAVEL
     if not java.exists():
         return None
@@ -35,7 +34,7 @@ def versao_java(home: Path) -> int | None:
 
 
 def candidatos_java() -> list[Path]:
-    """Pastas onde costuma haver Java: JAVA_HOME, o java do PATH e as pastas padrão de instalação."""
+    """Pastas padrões do Java: JAVA_HOME, o java do PATH e as pastas padrão de instalação."""
     pastas = []
     if os.environ.get("JAVA_HOME"):
         pastas.append(Path(os.environ["JAVA_HOME"]))
@@ -62,7 +61,7 @@ def localizar_java() -> tuple[Path, int]:
     if encontrados:
         lista = ", ".join(f"Java {v}" for _, v in encontrados)
         raise RuntimeError(f"Encontrei {lista}, mas o Spark 3.5 só funciona com Java 11, 17 ou 21. "
-                           "Instale o Java 17 (Temurin, em adoptium.net) e rode de novo.")
+                           "Instale o Java 17 (pasta instalaveis) e rode de novo.")
     raise RuntimeError("Java não encontrado. Instale o Java 17 (Temurin, em adoptium.net) e rode de novo.")
 
 

@@ -6,3 +6,4 @@ __pycache__/
 dados/brutos/*.CSV
 dados/brutos/*.csv
 dados/tratados/visitas_tratadas.parquet
+dados/tratados/controle_arquivos.json
